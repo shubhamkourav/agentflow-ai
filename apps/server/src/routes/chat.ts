@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { Command, HumanMessage } from "@langchain/langgraph";
+import { Command } from "@langchain/langgraph";
+import { HumanMessage } from "@langchain/core/messages";
 import { agentGraph } from "../agents/graph.js";
 
 export const chatRouter = Router();
