@@ -77,10 +77,15 @@ chatRouter.post("/threads/:threadId/runs", async (req, res) => {
         Array.isArray(task.interrupts) && task.interrupts.length > 0
       );
       if (pendingApproval) {
+        const interruptPayload = snapshot.tasks
+          ?.flatMap((task: any) => task.interrupts ?? [])
+          .map((item: any) => item.value)
+          .find((value: unknown) => value && typeof value === "object") ?? {};
         send("run.awaiting_approval", {
           threadId: threadId.data,
           message: "Human approval is required before this workflow can continue.",
-          approvalRequired: true
+          approvalRequired: true,
+          details: interruptPayload
         });
       } else {
         send("run.completed", { threadId: threadId.data, answer: snapshot.values.finalAnswer ?? "" });
