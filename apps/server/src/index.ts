@@ -1,16 +1,25 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+import { rateLimit } from "express-rate-limit";
 import { env } from "./config/env.js";
 import { connectMongo, mongoClient } from "./db/mongo.js";
+import { authRouter } from "./routes/auth.js";
 import { chatRouter } from "./routes/chat.js";
 
 const app = express();
 app.disable("x-powered-by");
 app.use(helmet());
-app.use(cors({ origin: env.CLIENT_ORIGIN, credentials: true }));
+app.use(cors({ origin: env.CLIENT_ORIGIN, credentials: false }));
 app.use(express.json({ limit: "32kb" }));
+app.use("/api", rateLimit({
+  windowMs: 60_000,
+  limit: 60,
+  standardHeaders: "draft-7",
+  legacyHeaders: false
+}));
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
+app.use("/api/auth", authRouter);
 app.use("/api", chatRouter);
 
 async function start() {
