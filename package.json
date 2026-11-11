@@ -1,0 +1,19 @@
+{
+  "name": "agentflow-ai",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w @agentflow/server\" \"npm run dev -w @agentflow/web\"",
+    "build": "npm run build -w @agentflow/server && npm run build -w @agentflow/web",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.8.3"
+  }
+}
