@@ -4,30 +4,26 @@ A multi-agent starter built with React, TypeScript, Express, LangGraph.js, OpenA
 
 ## Architecture
 
-- **Web:** React + Vite + TypeScript
-- **API:** Express + TypeScript; validates requests and streams run progress over SSE
-- **Orchestration:** LangGraph.js with a conditional supervisor, parallel research and risk analysis, planning, an approval interrupt, execution and review
-- **Persistence:** MongoDB application collections plus the LangGraph MongoDB checkpointer
+- **Web:** React + Vite + TypeScript; account sign-in and private conversation history
+- **API:** Express + TypeScript; JWT authentication, request validation, rate limiting and SSE progress
+- **Orchestration:** LangGraph.js with conditional routing, parallel research/risk analysis, planning, human approval, execution and review
+- **Persistence:** MongoDB users, conversations, approvals and audit events, plus the LangGraph checkpointer
 - **LLM:** OpenAI through `@langchain/openai`
 
 ## Workflow
 
-The supervisor classifies each request and selects the relevant path:
+The supervisor routes requests to the relevant specialists. Research and risk analysis can run in parallel and converge on planning. A reviewer can request one bounded revision pass. Consequential requests pause at a LangGraph interrupt.
 
-```text
-START -> supervisor
-           |-- research -> researcher -----|
-           |                 riskAnalyst ---|-> planner
-           |-- plan --------------------------> planner
-           |-- execute -----------------------> [approval if required]
-           |-- clarify -----------------------> reviewer
-planner -> [approval if required] -> executor -> reviewer
-reviewer -> planner (one bounded revision pass) OR END
-```
+## Security features
 
-Research and risk analysis run as parallel branches when the supervisor selects research. The reviewer can request one bounded revision pass. Requests that may cause external side effects pause at a LangGraph interrupt until a human approves or rejects them.
-
-**Important:** Approval only clears the workflow gate. This starter does not yet configure external action tools, so the executor prepares deliverables and does not send messages, publish content, modify production data or perform other external side effects.
+- Registration and login with bcrypt password hashing (12 salt rounds).
+- Signed JWT access tokens; the API derives the user identity from a verified token.
+- Authentication is required for conversation and approval endpoints.
+- Every conversation read, run and approval checks the authenticated owner.
+- Authentication and general API rate limits.
+- Unique user email index and indexes for private conversation queries.
+- Approval decisions are one-time, owner-scoped and bound to a SHA-256 digest of the exact pending interrupt payload.
+- Audit events record conversation creation, run start/completion/failure and approval lifecycle events.
 
 ## Quick start
 
@@ -35,7 +31,7 @@ Prerequisites: Node.js 20+, npm 10+, MongoDB 7+ or MongoDB Atlas, and an OpenAI 
 
 ```bash
 cp .env.example .env
-# Set OPENAI_API_KEY and MONGODB_URI in .env
+# Set OPENAI_API_KEY, MONGODB_URI and a random JWT_SECRET (32+ characters)
 npm install
 npm run dev
 ```
@@ -44,20 +40,36 @@ Open http://localhost:5173. API health: http://localhost:4000/health.
 
 ## API
 
-- `POST /api/threads` creates a thread and returns a UUID.
-- `POST /api/threads/:threadId/runs` accepts `{ "message": "..." }` and streams `run.started`, `agent.update`, `run.awaiting_approval`, `run.completed` and `run.error` events over SSE.
-- `POST /api/threads/:threadId/approve` resumes a paused workflow with `{ "approved": true | false, "note": "optional" }`.
+### Authentication
 
-Progress events expose safe status summaries, not private chain-of-thought. A client should show an approval UI when it receives `run.awaiting_approval`, then call the approval endpoint. Persist the thread ID so a paused run can be resumed.
+- `POST /api/auth/register` — `{ "name": "...", "email": "...", "password": "at least 12 chars" }`
+- `POST /api/auth/login` — `{ "email": "...", "password": "..." }`
+- `GET /api/auth/me` — returns the authenticated user.
 
-## Production hardening
+Register/login return an access token. Send it as `Authorization: Bearer <token>` on all conversation routes.
 
-- Add OIDC/JWT authentication and derive identity server-side.
-- Authorize every thread against its owner before invoking, approving or reading it.
-- Add rate limits, quotas and per-user concurrency limits.
-- Connect only scoped tools with strict schemas, allowlists, timeouts, idempotency and audit logs.
-- Bind approval decisions to the authenticated user, pending interrupt and exact action payload.
-- Add run cancellation, retention policies, encryption, tracing, metrics, alerts and integration tests.
-- Use managed MongoDB with backups and TLS; configure exact production CORS origins.
+### Conversations
 
-**Security:** This starter has no authentication and is for local development. Do not expose it publicly until the production hardening items are implemented. Never put the OpenAI key in the React app.
+- `POST /api/threads` creates a private conversation for the authenticated user.
+- `GET /api/threads` lists only that user's conversations.
+- `GET /api/threads/:threadId` reads only a conversation owned by the caller.
+- `POST /api/threads/:threadId/runs` accepts `{ "message": "..." }` and streams progress over SSE.
+- `POST /api/threads/:threadId/approve` resumes a pending workflow with `{ "approved": true | false, "note": "optional" }`.
+
+The approval endpoint verifies conversation ownership, checks that the stored pending approval still matches the exact LangGraph interrupt payload, and atomically consumes the pending decision before resuming the workflow.
+
+## Audit data
+
+The `audit_events` MongoDB collection stores owner-scoped security and workflow events. The `approval_requests` collection stores the digest and lifecycle of pending approvals. These collections are internal server data and are not exposed through public API endpoints.
+
+## Production hardening still required
+
+- Use HTTPS and a secure secrets manager; rotate JWT signing keys and add refresh-token/session revocation.
+- Consider HttpOnly secure cookies and CSRF protection if switching away from bearer-token storage.
+- Add account verification, password reset, lockout policy and abuse monitoring.
+- Add explicit authorization tests and integration tests for cross-user access and approval replay.
+- Configure trusted proxy settings correctly before relying on IP-based rate limits.
+- Add retention policies, audit export, backups, encryption at rest and operational monitoring.
+- Implement only narrowly scoped external tools with strict schemas, idempotency keys, timeouts and per-action authorization.
+
+**Important:** The executor currently prepares deliverables only. No external action tools are connected, so approving a workflow does not send messages, publish content, modify production data or spend money. The app is still a development starter and must receive a security review before public deployment. Never put the OpenAI or JWT secret in the React app.
