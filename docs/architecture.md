@@ -8,14 +8,27 @@ Browser -> Express API -> LangGraph -> model/tools.
 - Express validates input and owns identity/authorization.
 - Graph state is partitioned by server-authorized thread IDs.
 - Tool implementations must validate arguments and enforce per-user permissions.
+- Approval is a workflow gate, not proof that a user is authorized; the API must authenticate and authorize the approver.
 
 ## Agent responsibilities
 
-- Supervisor: creates task brief and selects/coordinates work.
+- Supervisor: classifies the request, creates a task brief and chooses the workflow route.
 - Researcher: gathers evidence (connect a search tool before claiming live research).
-- Planner: produces ordered steps and acceptance criteria.
-- Executor: creates a deliverable; external side effects require explicit approval.
-- Reviewer: checks consistency and synthesizes the response.
+- Risk analyst: independently identifies security, privacy, reliability and operational risks.
+- Planner: creates ordered steps, dependencies and acceptance criteria.
+- Approval gate: pauses with a LangGraph interrupt for requests flagged as consequential.
+- Executor: creates a deliverable; external side effects are not configured in this starter.
+- Reviewer: checks consistency and can request one bounded revision pass.
+
+## Routing and parallelism
+
+The supervisor uses conditional edges. Research and risk analysis are parallel branches when research is selected; both converge on planning. Plan-only and execute-only requests skip unnecessary specialist stages. The reviewer may return the workflow to planning once, preventing unbounded review loops.
+
+## Human approval and resume
+
+The approval node calls LangGraph `interrupt()`. The API reports `run.awaiting_approval` over SSE. A client submits a decision to `POST /api/threads/:threadId/approve`; the server resumes the checkpointed graph with `Command({ resume })`.
+
+Before production, bind each pending approval to an authenticated principal, exact action payload, expiration and one-time decision. Do not rely on a client-supplied thread ID as authorization.
 
 ## Persistence
 
@@ -23,10 +36,10 @@ Use a MongoDB checkpointer for graph thread state. Store product-level entities 
 `users`, `conversations`, `messages`, `agent_runs`, `audit_events`.
 Do not assume checkpoint documents are a substitute for an application conversation model.
 
-## Next architecture increments
+## Next increments
 
-1. Replace fixed sequence with conditional supervisor routing.
-2. Add a search tool and a scoped internal knowledge retrieval tool.
-3. Add interrupt/approval before tools with external side effects.
+1. Add authentication and per-thread ownership enforcement.
+2. Add scoped search and internal knowledge retrieval tools.
+3. Add tool execution with per-action schemas, audit logs and approval payload binding.
 4. Add run cancellation, resumability and per-user concurrency.
-5. Add trace IDs and LangSmith observability.
+5. Add LangSmith observability, metrics and integration tests.
