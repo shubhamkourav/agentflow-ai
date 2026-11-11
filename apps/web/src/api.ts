@@ -1,7 +1,7 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
 export type AgentUpdate = { agent: string; status: string; message: string };
-export type ApprovalRequest = { threadId: string; message: string; approvalRequired: boolean };
+export type ApprovalRequest = { threadId: string; message: string; approvalRequired: boolean; details?: { taskBrief?: string; plan?: string } };
 
 export async function createThread(): Promise<string> {
   const response = await fetch(`${API_URL}/api/threads`, { method: "POST" });
