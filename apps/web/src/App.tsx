@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Bot, BrainCircuit, CheckCircle2, LoaderCircle, LogOut, Plus, Send, ShieldCheck, Sparkles, XCircle } from "lucide-react";
 import {
   approveThread, authenticate, clearAccessToken, createThread, getConversation,
@@ -58,7 +58,7 @@ export default function App() {
     return () => { active = false; };
   }, []);
 
-  async function submitAuth(event: React.FormEvent) {
+  async function submitAuth(event: FormEvent) {
     event.preventDefault();
     setAuthBusy(true); setError("");
     try {
