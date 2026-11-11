@@ -57,7 +57,7 @@ export default function App() {
   }
 
   function newChat() {
-    if (busy || approvalBusy) return;
+    if (busy || approvalBusy || approvalPending) return;
     setThreadId(""); setMessages([]); setUpdates([]); setError(""); setApprovalPending(false);
   }
 
