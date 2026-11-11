@@ -43,3 +43,16 @@ Do not assume checkpoint documents are a substitute for an application conversat
 3. Add tool execution with per-action schemas, audit logs and approval payload binding.
 4. Add run cancellation, resumability and per-user concurrency.
 5. Add LangSmith observability, metrics and integration tests.
+
+
+## Identity, ownership and audit
+
+Registration stores a bcrypt password hash, never the plaintext password. Login returns a short-lived signed JWT. The API validates the token signature, issuer, audience and expiry; user identity is never accepted from request bodies.
+
+Conversation records contain an owner ID. Every thread read, run and approval performs an owner-scoped lookup before accessing LangGraph state. A UUID is an identifier, not an authorization secret.
+
+Audit events are written to `audit_events`. Pending approval metadata is stored in `approval_requests`; the approval decision is bound to the authenticated owner, thread ID and SHA-256 digest of the current interrupt payload. The pending record is atomically transitioned so a second decision cannot replay it.
+
+## Remaining production controls
+
+JWT revocation/refresh, email verification, password reset, account lockout, robust proxy-aware rate limiting, encryption/retention policy, external tool adapters and security integration tests remain future work. The current executor does not invoke external systems.
