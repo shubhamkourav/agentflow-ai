@@ -93,7 +93,7 @@ const reviewer = async (state: AgentStateType) => {
   return {
     finalAnswer: result.finalAnswer,
     reviewNotes: result.reviewNotes,
-    needsRevision: result.needsRevision,
+    needsRevision: state.approvalStatus !== "rejected" && result.needsRevision,
     reviewCount: state.reviewCount + 1,
     messages: [new AIMessage(result.finalAnswer)]
   };
@@ -106,7 +106,6 @@ function afterSupervisor(state: AgentStateType): string[] {
   return ["reviewer"];
 }
 
-function afterResearch(): string { return "planner"; }
 function afterPlan(state: AgentStateType): string { return state.requiresApproval ? "approval" : "executor"; }
 function afterApproval(state: AgentStateType): string { return state.approvalStatus === "approved" ? "executor" : "reviewer"; }
 function afterReview(state: AgentStateType): string {
@@ -123,8 +122,7 @@ const workflow = new StateGraph(AgentState)
   .addNode("reviewer", reviewer)
   .addEdge(START, "supervisor")
   .addConditionalEdges("supervisor", afterSupervisor)
-  .addEdge("researcher", "planner")
-  .addEdge("riskAnalyst", "planner")
+  .addEdge(["researcher", "riskAnalyst"], "planner")
   .addConditionalEdges("planner", afterPlan)
   .addConditionalEdges("approval", afterApproval)
   .addEdge("executor", "reviewer")
