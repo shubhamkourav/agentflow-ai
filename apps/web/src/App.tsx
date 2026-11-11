@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Bot, BrainCircuit, CheckCircle2, LoaderCircle, Plus, Send, Sparkles, ShieldCheck, XCircle } from "lucide-react";
-import { approveThread, createThread, streamRun, type AgentUpdate } from "./api";
+import { approveThread, createThread, streamRun, type AgentUpdate, type ApprovalRequest } from "./api";
 
 type Message = { role: "user" | "assistant"; content: string };
 const agents = [
@@ -19,6 +19,7 @@ export default function App() {
   const [updates, setUpdates] = useState<AgentUpdate[]>([]);
   const [busy, setBusy] = useState(false);
   const [approvalPending, setApprovalPending] = useState(false);
+  const [approvalDetails, setApprovalDetails] = useState<ApprovalRequest["details"]>({});
   const [approvalBusy, setApprovalBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -35,7 +36,7 @@ export default function App() {
       await streamRun(id, prompt, {
         onUpdate: (update) => setUpdates((items) => [...items.filter((item) => item.agent !== update.agent), update]),
         onComplete: (result) => { answer = result; },
-        onApproval: () => setApprovalPending(true),
+        onApproval: (request) => { setApprovalPending(true); setApprovalDetails(request.details ?? {}); },
         onError: (message) => setError(message)
       });
       if (answer) setMessages((items) => [...items, { role: "assistant", content: answer }]);
@@ -49,7 +50,7 @@ export default function App() {
     setApprovalBusy(true); setError("");
     try {
       const result = await approveThread(threadId, approved);
-      setApprovalPending(false);
+      setApprovalPending(false); setApprovalDetails({});
       if (result.answer) setMessages((items) => [...items, { role: "assistant", content: result.answer }]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not submit approval");
@@ -58,7 +59,7 @@ export default function App() {
 
   function newChat() {
     if (busy || approvalBusy || approvalPending) return;
-    setThreadId(""); setMessages([]); setUpdates([]); setError(""); setApprovalPending(false);
+    setThreadId(""); setMessages([]); setUpdates([]); setError(""); setApprovalPending(false); setApprovalDetails({});
   }
 
   return (
@@ -94,7 +95,9 @@ export default function App() {
                   {busy && <div className="working"><LoaderCircle className="spin" size={16}/> Agents are working on your request…</div>}
                   {approvalPending && <section className="approval-card">
                     <div className="approval-title"><ShieldCheck size={18}/><strong>Human approval required</strong></div>
-                    <p>This request may involve a consequential action. Review the proposed plan before allowing the workflow to continue. Approval does not authorize an external action in this starter; no external action tools are connected.</p>
+                    <p>This request may involve a consequential action. Review the details before allowing the workflow to continue. Approval does not authorize an external action in this starter; no external action tools are connected.</p>
+                    {approvalDetails?.taskBrief && <div className="approval-detail"><strong>Task</strong><p>{approvalDetails.taskBrief}</p></div>}
+                    {approvalDetails?.plan && <div className="approval-detail"><strong>Proposed plan</strong><p>{approvalDetails.plan}</p></div>}
                     <div className="approval-actions">
                       <button className="approve-button" disabled={approvalBusy} onClick={() => void decideApproval(true)}><CheckCircle2 size={15}/> Approve workflow</button>
                       <button className="reject-button" disabled={approvalBusy} onClick={() => void decideApproval(false)}><XCircle size={15}/> Reject</button>
