@@ -1,6 +1,7 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
 export type AgentUpdate = { agent: string; status: string; message: string };
+export type ApprovalRequest = { threadId: string; message: string; approvalRequired: boolean };
 
 export async function createThread(): Promise<string> {
   const response = await fetch(`${API_URL}/api/threads`, { method: "POST" });
@@ -9,9 +10,21 @@ export async function createThread(): Promise<string> {
   return data.threadId;
 }
 
+export async function approveThread(threadId: string, approved: boolean, note = ""): Promise<{ answer: string; approvalStatus: string }> {
+  const response = await fetch(`${API_URL}/api/threads/${threadId}/approve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ approved, note })
+  });
+  const data = await response.json() as { answer?: string; approvalStatus?: string; error?: string };
+  if (!response.ok) throw new Error(data.error ?? "Could not submit approval");
+  return { answer: data.answer ?? "", approvalStatus: data.approvalStatus ?? "unknown" };
+}
+
 export async function streamRun(threadId: string, message: string, handlers: {
   onUpdate: (update: AgentUpdate) => void;
   onComplete: (answer: string) => void;
+  onApproval: (request: ApprovalRequest) => void;
   onError: (message: string) => void;
 }) {
   const response = await fetch(`${API_URL}/api/threads/${threadId}/runs`, {
@@ -36,6 +49,7 @@ export async function streamRun(threadId: string, message: string, handlers: {
       const data = JSON.parse(dataLine) as Record<string, unknown>;
       if (event === "agent.update") handlers.onUpdate(data as unknown as AgentUpdate);
       if (event === "run.completed") handlers.onComplete(String(data.answer ?? ""));
+      if (event === "run.awaiting_approval") handlers.onApproval(data as unknown as ApprovalRequest);
       if (event === "run.error") handlers.onError(String(data.message ?? "Unknown error"));
     }
   }
