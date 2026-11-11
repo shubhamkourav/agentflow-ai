@@ -14,3 +14,12 @@
 .run-card{margin-top:28px;padding:15px;border:1px solid #302b40;background:#15131d;border-radius:10px;display:flex;flex-direction:column;gap:10px}.run-card strong{font:600 13px 'Space Grotesk'}.run-card>span:last-of-type{font-size:10px;color:#858195}.progress{height:4px;background:#302c3a;border-radius:5px;overflow:hidden}.progress i{display:block;height:100%;background:linear-gradient(90deg,#9a70ec,#6c8aff);transition:width .25s}
 .architecture-note{display:flex;gap:10px;margin-top:25px;color:#a58be9}.architecture-note strong{font-size:10px;color:#c7c1d6}.architecture-note p{font-size:10px;line-height:1.7;color:#777487;margin:6px 0}
 @media(max-width:900px){.content{grid-template-columns:1fr}.agent-panel{border-top:1px solid #24232d}.chat-panel{border-right:0;min-height:65vh}.agent-list{display:grid;grid-template-columns:1fr 1fr;column-gap:15px}.agent-row{min-width:0}.agent-panel{padding:22px}.run-card{max-width:420px}}@media(max-width:600px){.sidebar{display:none}.topbar{padding:0 18px}.online{font-size:0}.conversation{padding:20px 16px}.composer-wrap{padding:12px 14px}.composer-foot span:last-child{display:none}.agent-list{grid-template-columns:1fr 1fr}}
+
+.approval-card{margin:20px 0 22px 43px;padding:16px;border:1px solid #7059b2;background:linear-gradient(135deg,#1c1830,#15131d);border-radius:12px;max-width:680px;box-shadow:0 10px 30px #0003}
+.approval-title{display:flex;align-items:center;gap:9px;color:#c6b5ff;font-size:13px}
+.approval-card p{font-size:11px;line-height:1.7;color:#aaa5bb;margin:10px 0 14px}
+.approval-actions{display:flex;gap:9px;flex-wrap:wrap}
+.approval-actions button{display:flex;align-items:center;gap:7px;border-radius:8px;padding:9px 12px;font-size:11px;font-weight:600;cursor:pointer}
+.approve-button{border:1px solid #267b59;background:#123a2b;color:#8aefbf}
+.reject-button{border:1px solid #713c48;background:#351b24;color:#ffadb8}
+.approval-actions button:disabled{opacity:.5;cursor:not-allowed}
