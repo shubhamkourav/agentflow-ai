@@ -8,7 +8,9 @@ const schema = z.object({
   MONGODB_URI: z.string().min(1),
   MONGODB_DB: z.string().default("agentflow"),
   OPENAI_API_KEY: z.string().min(1),
-  OPENAI_MODEL: z.string().default("gpt-4.1-mini")
+  OPENAI_MODEL: z.string().default("gpt-4.1-mini"),
+  JWT_SECRET: z.string().min(32, "JWT_SECRET must contain at least 32 characters"),
+  JWT_EXPIRES_IN: z.string().default("8h")
 });
 
 export const env = schema.parse(process.env);
